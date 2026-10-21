@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TS 정오표 에이전트</title>
+<style>
+:root{
+  --rail:#201e1b;--rail-fg:#efece5;--rail-mute:#b3aca1;--rail-dim:#8a8378;--rail-brand:#7fb3d5;--rail-hover:#302e2b;--rail-active:#26303a;--rail-line:rgb(255 255 255/.09);
+  --paper:#f7f5f1;--card:#fffdfa;--fg:#24211d;--mute:#6b645a;--line:#e4ded4;--brand:#2f5f86;--wash:#e6eef5;
+  --ok:#2f6b3a;--okbg:#e5f1e3;--bad:#b42318;--badbg:#fbe9e6;--warn:#8a5a00;--warnbg:#fbf0d9;--log:#1b1916;--logfg:#e6e0d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#161412;--card:#1e1c19;--fg:#ece7df;--mute:#a59d91;--line:#34302b;--brand:#8bbbe0;--wash:#1f2a33;--ok:#7cc98a;--okbg:#1d2a1f;--bad:#ff8a7a;--badbg:#3a201c;--warn:#f1cf9c;--warnbg:#3a3020;--log:#0f0e0c}}
+:root[data-theme="dark"]{--paper:#161412;--card:#1e1c19;--fg:#ece7df;--mute:#a59d91;--line:#34302b;--brand:#8bbbe0;--wash:#1f2a33;--ok:#7cc98a;--okbg:#1d2a1f;--bad:#ff8a7a;--badbg:#3a201c;--warn:#f1cf9c;--warnbg:#3a3020;--log:#0f0e0c}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--fg);font:13.5px/1.6 Pretendard,"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;display:flex}
+.rail{width:262px;flex:none;background:var(--rail);color:var(--rail-fg);display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.brand{padding:18px 16px 14px;border-bottom:1px solid var(--rail-line)}
+.brand b{font-size:16px;letter-spacing:-.2px}
+.pill{background:#2f5f86;color:#fff;font-weight:800;font-size:13px;border-radius:8px;padding:5px 10px}
+.brand small{display:block;color:var(--rail-dim);font-size:11.5px;margin-top:6px}
+.newbook{display:block;width:100%;margin-top:12px;background:var(--rail-brand);border:0;color:#10202c;font-weight:800;font-size:15px;border-radius:22px;padding:10px 0}
+.newbook:hover{background:#97c4e2}
+.nav{flex:1;overflow:auto;padding:10px 8px}
+.nav a{display:flex;gap:8px;align-items:flex-start;padding:6px 10px;border-radius:8px;color:var(--rail-fg);text-decoration:none;margin:1px 0}
+.nav a:hover{background:var(--rail-hover)}
+.nav a.on{background:var(--rail-active);box-shadow:inset 3px 0 0 var(--rail-brand)}
+.nav-no{font-weight:800;color:var(--rail-brand);min-width:34px;font-variant-numeric:tabular-nums;font-size:12.5px}
+.nav-t{flex:1;min-width:0;overflow-wrap:anywhere}
+.nav-t em{display:block;font-style:normal;font-size:11.5px;color:var(--rail-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-sec{color:var(--rail-dim);font-size:11px;letter-spacing:.5px;padding:12px 10px 4px}
+.chip{font-size:10.5px;border-radius:9px;padding:0 6px;background:rgb(255 255 255/.08);color:var(--rail-mute);white-space:nowrap}
+.chip.ok{background:#2f4a33;color:#bfe3c3}.chip.warn{background:#4a3a26;color:#f1cf9c}.chip.who{background:#26384a;color:#bcd7ee}
+.rail-foot{border-top:1px solid var(--rail-line);padding:10px 14px;font-size:11.5px;color:var(--rail-dim)}
+.rail-foot .bar{background:rgb(255 255 255/.1)}
+.cxbtn{cursor:pointer;color:var(--rail-fg);padding:6px 8px;margin:0 -8px 6px;border-radius:8px;display:flex;gap:6px;align-items:center;white-space:nowrap}
+.cxbtn:hover{background:var(--rail-hover)}
+.cxmail{color:var(--rail-dim);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cxmenu{background:var(--rail-hover);border-radius:8px;padding:8px 10px;margin:-2px -8px 8px;color:var(--rail-mute);overflow-wrap:anywhere}
+.cxmenu button{background:transparent;color:var(--rail-fg);border-color:var(--rail-line);padding:3px 9px;font-size:12px}
+.cxmenu button:hover{background:var(--rail-active)}
+main{flex:1;min-width:0;height:100vh;overflow:auto;overflow-x:hidden}
+.wrap{max-width:1240px;margin:0 auto;padding:22px 24px 60px}
+h1{font-size:20px;margin:0}
+.sub{color:var(--mute);margin:2px 0 14px;overflow-wrap:anywhere}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:12px 0}
+.card h2{font-size:14.5px;margin:0 0 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.n{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:6px;background:var(--brand);color:#fff;font-size:12px;font-weight:700;padding:0 4px}
+.mute{color:var(--mute)}
+button,select,input{font:inherit;color:var(--fg)}
+button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{background:var(--wash)}
+button.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
+button:disabled{opacity:.5;cursor:not-allowed}
+input[type=text],input[type=number],input[type=date],select{border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--card)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin:6px 0}
+.drop.drag{border-color:var(--brand);background:var(--wash)}
+.drop .name{font-weight:600}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:8px 0 6px}
+.bar i{display:block;height:100%;width:0;background:var(--brand);transition:width .3s}
+pre.log{background:var(--log);color:var(--logfg);border-radius:10px;padding:10px 12px;max-height:220px;overflow:auto;font:12px/1.5 Consolas,"D2Coding",monospace;white-space:pre-wrap;margin:0}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:middle;font-size:13px}
+th{color:var(--mute);font-weight:600;white-space:nowrap}
+td input[type=text]{width:100%}
+td input[type=number]{width:62px}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpis{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 10px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:6px 14px;min-width:100px;background:var(--paper)}
+.kpi b{display:block;font-size:19px}
+.stages{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.stage{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper);cursor:pointer}
+.stage:hover{border-color:var(--brand)}
+.stage b{display:block;font-size:12.5px}
+.stage span{font-size:11.5px;color:var(--mute)}
+iframe{width:100%;height:78vh;border:1px solid var(--line);border-radius:10px;background:#fff}
+.tag{font-size:11px;border-radius:9px;padding:1px 7px;background:var(--okbg);color:var(--ok);white-space:nowrap}
+.tag.warn{background:var(--warnbg);color:var(--warn)}.tag.plain{background:var(--paper);color:var(--mute);border:1px solid var(--line)}
+#toast{position:fixed;right:18px;top:16px;background:var(--fg);color:var(--paper);padding:9px 34px 9px 16px;border-radius:10px;display:none;max-width:min(460px,90vw);z-index:9;cursor:pointer;box-shadow:0 6px 24px rgb(0 0 0/.18)}
+#toast::after{content:"✕";position:absolute;right:12px;top:9px;opacity:.6}
+.alert{border:1px solid var(--bad);background:var(--badbg);color:var(--fg);border-radius:10px;padding:10px 14px;margin:8px 0;position:relative}
+.alert b{color:var(--bad)}
+.alert .x{position:absolute;right:8px;top:6px;border:0;background:none;font-size:15px;padding:2px 6px}
+.alert code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:2px 8px;font:12.5px Consolas,"D2Coding",monospace}
+.alert details{margin-top:6px;color:var(--mute);font-size:12px;overflow-wrap:anywhere}
+.iconbtn{padding:2px 7px;font-size:12px}
+.empty{padding:30px;text-align:center;color:var(--mute)}
+.notes{margin:4px 0 0;padding-left:18px}
+.notes li{margin:2px 0}
+.late{color:var(--bad);font-weight:700}
+@media (max-width:820px){body{display:block}.rail{width:auto;height:auto;position:static}.nav{max-height:240px}main{height:auto}.stages{grid-template-columns:repeat(3,1fr)}.wrap{padding:16px}}
+</style></head>
+<body>
+<nav class="rail">
+  <div class="brand"><div class="row" style="gap:8px"><span class="pill">TS 정오표</span><b>에이전트</b></div>
+    <small>가제본 속독 → 소절별 정오표 · Judge · Evidence · Verdict</small>
+    <button class="newbook" onclick="newBook()">＋ 새 책 넣기</button></div>
+  <div class="nav" id="nav"></div>
+  <div class="rail-foot" id="foot"></div>
+</nav>
+<main><div class="wrap" id="view"></div></main>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const kb = n => n > 1048576 ? (n/1048576).toFixed(1)+"MB" : Math.max(1, Math.round(n/1024))+"KB";
+const api = async (url, opt) => { const r = await fetch(url, opt); const j = await r.json().catch(()=>({error:"응답 오류"})); if(!r.ok || j.ok===false) throw new Error(j.error||r.status); return j };
+function toast(t, ms=3500){ const e=$("toast"); e.textContent=t; e.style.display="block"; e.onclick=()=>e.style.display="none"; clearTimeout(e._t); e._t=setTimeout(()=>e.style.display="none",ms) }
+const pp = p => p && p[0]===0 ? "표지–"+p[1] : p ? p[0]+"–"+p[1] : "";
+const today = () => new Date().toISOString().slice(0,10);
+
+let APP = null, US = null, DRAFT = null, timer = null, wasRunning = false;
+const route = () => { const m = location.hash.match(/^#\/u\/(.+)$/); if(m) return {view:"unit", id:decodeURIComponent(m[1])};
+  return {view: location.hash==="#/all" ? "all" : "book"} };
+const ulink = id => "#/u/"+encodeURIComponent(id);
+
+async function refresh(){
+  try{
+    APP = await api("/api/state");
+    const r = route();
+    if(r.view === "unit") US = await api("/api/unit?id="+encodeURIComponent(r.id)).catch(e=>{toast(e.message); location.hash="#/book"; return null});
+    renderNav(); renderView(false);
+  }catch(e){ $("view").innerHTML = `<div class="empty">서버에 연결할 수 없습니다. run.bat 창이 열려 있는지 확인하세요.</div>` }
+  clearTimeout(timer); timer = setTimeout(refresh, APP && (APP.job.running || (APP.codex && (APP.codex.checking || APP.codex.login_open))) ? 1200 : 6000);
+}
+
+const ST = {"미판정":"", "판정완료":"warn", "검토완료":"ok"};
+function renderNav(){
+  const r = route();
+  let h = `<a href="#/book" class="${r.view==="book"?"on":""}"><span class="nav-no">0</span><span class="nav-t">책 넣기 · 단위<em>${APP.book ? esc(APP.book.file) : "교재 PDF 전체를 올리세요"}</em></span></a>`;
+  const done = APP.units.filter(u=>u.status==="검토완료").length;
+  h += `<a href="#/all" class="${r.view==="all"?"on":""}"><span class="nav-no">Σ</span><span class="nav-t">전체 속독 · 정오표<em>검토 ${done}/${APP.units.length} · ${APP.merged ? "합본 "+esc(APP.merged.time) : "합본 없음"}</em></span></a>`;
+  h += `<div class="nav-sec">소절별 정오표</div>`;
+  if(!APP.units.length) h += `<div class="nav-sec" style="letter-spacing:0">단위 목록을 확정하면 소절이 나타납니다.</div>`;
+  for(const u of APP.units){
+    const st = u.status!=="미판정" ? `<span class="chip ${ST[u.status]}">${u.status==="검토완료" ? "정오표 "+u.errata : "후보 "+u.candidates}</span>` : "";
+    const who = u.assignee ? `<span class="chip who">${esc(u.assignee)}${u.due?" · "+esc(u.due.slice(5)):""}</span>` : "";
+    h += `<a href="${ulink(u.id)}" class="${r.view==="unit"&&r.id===u.id?"on":""}"><span class="nav-no">${esc(u.id)}</span>
+      <span class="nav-t">${esc(u.title.replace(/^\d+\.\d+\s*/,""))}<em>p.${pp(u.printed)} · ${u.n_pages}쪽</em>
+      <span class="row" style="gap:4px;margin-top:3px">${st}${who}</span></span></a>`;
+  }
+  $("nav").innerHTML = h;
+  const j = APP.job;
+  $("foot").innerHTML = codexFoot() + (j.name ? `<div>${j.running ? "⏳" : (j.error ? "⚠" : "✓")} ${esc(j.name)}${j.uid ? " · "+esc(j.uid) : ""}</div><div class="bar"><i style="width:${progress(j)}%"></i></div>` : "")
+    + `<div title="${esc(APP.workspace)}">워크스페이스: ${esc(APP.workspace.split(/[\\/]/).slice(-2).join("/"))}</div>`;
+  if(wasRunning && !j.running) toast(j.error ? (j.error_kind==="auth" ? "⚠ Codex 로그인 만료 — 화면의 안내를 확인하세요" : "⚠ "+j.name+" 중단 — 화면의 안내를 확인하세요") : j.name+" 완료", 6000);
+  wasRunning = j.running;
+}
+
+function progress(j){
+  if(!j.name) return 0;
+  if(!j.running) return 100;
+  const tot = j.log.map(l=>l.match(/4쪽 구간 (\d+)건을 Codex/)).filter(Boolean).pop();
+  const since = j.log.length - [...j.log].reverse().findIndex(l=>/4쪽 구간 \d+건을 Codex/.test(l));
+  const done = tot ? j.log.slice(since).filter(l=>/^\s*\[(판정|cache|오류)\]/.test(l)).length : 0;
+  const inner = tot ? done/(+tot[1]||1) : 0;
+  if(j.name === "전체 판정"){
+    const m = j.log.map(l=>l.match(/^\[전체\] (\d+)\/(\d+)/)).filter(Boolean).pop();
+    return m ? Math.min(99, 4 + 95*((+m[1]-1+inner)/+m[2])) : 3;
+  }
+  if(j.name === "교정 판정") return tot ? Math.min(97, 12 + 85*inner) : 6;
+  return 45;
+}
+
+function renderView(force=true){
+  const r = route();
+  if(r.view === "book") return renderBook(force);
+  if(r.view === "all") return renderAll(force);
+  if(US) return renderUnit(force);
+}
+
+/* ---------- 0. 책 넣기 · 단위 ---------- */
+const METHOD = {outline:"PDF 책갈피 (소절 단위)", fixed:"책갈피가 없어 20쪽씩", codex:"Codex"};
+function syncDraft(t){
+  if(t && (!DRAFT || DRAFT.book !== t.book || DRAFT._src !== JSON.stringify(t.units))){
+    DRAFT = JSON.parse(JSON.stringify(t)); DRAFT._src = JSON.stringify(t.units); DRAFT.style = DRAFT.style || {quotes:"curly"};
+  }
+}
+function renderBook(force){
+  const t = APP.toc, j = APP.job;
+  if(!force && document.activeElement && document.activeElement.closest("#unittable, #assign")) { updateJobBox("bookjob"); return }
+  syncDraft(t);
+  const seen = new Set();  // 앞뒤 단위가 나눠 갖는 쪽은 한 번만 센다
+  if(DRAFT) DRAFT.units.filter(u=>u.include).forEach(u=>{ for(let p=u.pages[0]; p<=u.pages[1]; p++) seen.add(p) });
+  const total = seen.size;
+  $("view").innerHTML = `
+  <h1>책 넣기 · 단위</h1>
+  <div class="sub">① 가제본 PDF 전체를 넣고 → ② 소절 단위(최대 ${t?t.max_pages:20}쪽)와 정독 담당자·마감을 확인한 뒤 확정하면 소절별 워크스페이스가 만들어집니다.</div>
+  <div id="bookjob"></div>
+  <div class="card">
+    <h2><span class="n">1</span>가제본 PDF 전체</h2>
+    <div class="drop" id="bookdrop">
+      <div><div class="name">${APP.book ? `<span class="ok">✔ ${esc(APP.book.file)}</span> <span class="mute">${kb(APP.book.size)}${t?` · ${t.page_count}쪽`:""}</span>` : `<span class="bad">✖ 아직 없음</span>`}</div>
+      <div class="mute">이 화면 아무 곳에나 끌어다 놓거나 [선택] — 쪼개지 말고 원본 그대로 (PDF, 책갈피가 있으면 소절로 자동 분할)</div></div>
+      <div><input type="file" id="bookfile" accept=".pdf" hidden><button onclick="$('bookfile').click()">선택</button></div>
+    </div>
+  </div>
+  ${t ? `
+  <div class="card" id="assign">
+    <h2><span class="n">2</span>정독 배분 도우미 <span class="mute" style="font-weight:400">— 이름을 쉼표로 넣으면 쪽수가 고르게 이어지도록 나누고, 마감을 기간 안에 순서대로 펼칩니다</span></h2>
+    <div class="row">
+      <input type="text" id="names" placeholder="예: 김하늘, 이도윤, 박서연" style="width:280px">
+      <label>시작 <input type="date" id="d0" value="${today()}"></label>
+      <label>마감 <input type="date" id="d1" value="${new Date().getFullYear()+(new Date().getMonth()>=3?1:0)}-03-31"></label>
+      <button onclick="assign()">배분하기</button>
+      <span class="mute">아래 표에 채워집니다. 확정해야 저장됩니다.</span>
+    </div>
+  </div>
+  <div class="card">
+    <h2><span class="n">3</span>단위 확인 <span class="mute" style="font-weight:400">— 찾은 방식: ${esc(METHOD[t.method]||t.method)} · 포함 ${DRAFT.units.filter(u=>u.include).length}개 · ${total}쪽${t.confirmed?` · <span class="ok">확정됨 ${esc(t.confirmed_at||"")}</span>`:""}</span></h2>
+    ${DRAFT.units.length ? `<div class="tbl"><table id="unittable"><thead><tr><th>포함</th><th>번호</th><th>제목</th><th>PDF 시작</th><th>PDF 끝</th><th>인쇄 쪽</th><th>쪽수</th><th>담당자</th><th>마감</th><th></th></tr></thead><tbody>
+      ${DRAFT.units.map((u,i)=>{ const n = u.pages[1]-u.pages[0]+1; return `<tr>
+        <td><input type="checkbox" ${u.include?"checked":""} onchange="DRAFT.units[${i}].include=this.checked;renderView(true)"></td>
+        <td><input type="text" value="${esc(u.id)}" style="width:62px" oninput="DRAFT.units[${i}].id=this.value"></td>
+        <td><input type="text" value="${esc(u.title)}" oninput="DRAFT.units[${i}].title=this.value"></td>
+        <td><input type="number" value="${u.pages[0]}" oninput="DRAFT.units[${i}].pages[0]=+this.value"></td>
+        <td><input type="number" value="${u.pages[1]}" oninput="DRAFT.units[${i}].pages[1]=+this.value"></td>
+        <td class="num mute">${pp(u.printed)}</td>
+        <td class="num ${n>t.max_pages?"bad":""}">${n}</td>
+        <td><input type="text" value="${esc(u.assignee||"")}" style="width:78px" oninput="DRAFT.units[${i}].assignee=this.value"></td>
+        <td><input type="date" value="${esc(u.due||"")}" oninput="DRAFT.units[${i}].due=this.value"></td>
+        <td style="white-space:nowrap"><button class="iconbtn" title="아래에 행 추가 (단위 나누기)" onclick="addRow(${i})">＋</button><button class="iconbtn" title="행 삭제" onclick="delRow(${i})">✕</button></td></tr>`}).join("")}
+      </tbody></table></div>` : `<div class="empty">단위를 찾지 못했습니다. <button onclick="addRow(-1)">＋ 직접 행 추가</button> 또는 [Codex로 다시 뽑기]</div>`}
+    <div class="row" style="margin-top:12px">
+      <label class="mute">따옴표 기준 <select onchange="DRAFT.style.quotes=this.value">
+        <option value="curly" ${DRAFT.style.quotes==="curly"?"selected":""}>굽은 따옴표 “ ” ‘ ’ 로 통일</option>
+        <option value="keep" ${DRAFT.style.quotes!=="curly"?"selected":""}>검사하지 않음</option></select></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" onclick="confirmUnits()" ${!DRAFT.units.length?"disabled":""}>단위 확정 → 소절별 워크스페이스 만들기</button>
+      <button onclick="codexToc()" ${j.running?"disabled":""} title="이 PC에 Codex 로그인이 되어 있어야 합니다">Codex로 다시 뽑기</button>
+      <span class="mute">쪽은 PDF 쪽 번호입니다. 쪽을 손으로 바꾸면 그 단위는 쪽 전체 단위로 자릅니다.</span>
+    </div>
+  </div>
+  ${APP.backups.length ? `<div class="card"><h2><span class="n">↺</span>이전 책 (백업) <span class="mute" style="font-weight:400">— backup/ 폴더 · 불러오면 지금 작업은 먼저 백업됩니다</span></h2>
+    <table><tbody>${APP.backups.map(b=>`<tr><td>${esc(b.book||"(책 없음)")}</td><td class="mute">${esc(b.name.slice(0,15))} · 단위 ${b.units}개</td>
+    <td style="text-align:right"><button onclick="restoreBook('${esc(b.name)}')">불러오기</button></td></tr>`).join("")}</tbody></table></div>` : ""}
+  ` : ""}`;
+  const dz = $("bookdrop");
+  dz.ondragover = e=>{e.preventDefault(); dz.classList.add("drag")}; dz.ondragleave = ()=>dz.classList.remove("drag");
+  dz.ondrop = e=>{e.preventDefault(); e.stopPropagation(); dz.classList.remove("drag"); uploadBook(e.dataTransfer.files[0])};
+  $("bookfile").onchange = e=>uploadBook(e.target.files[0]);
+  updateJobBox("bookjob");
+}
+function assign(){
+  const names = $("names").value.split(/[,，\s]+/).map(s=>s.trim()).filter(Boolean);
+  if(!names.length) return toast("이름을 넣으세요.");
+  const d0 = new Date($("d0").value), d1 = new Date($("d1").value);
+  if(!(d1 > d0)) return toast("마감이 시작보다 뒤여야 합니다.");
+  const us = DRAFT.units.filter(u=>u.include), pages = us.map(u=>u.pages[1]-u.pages[0]+1), total = pages.reduce((a,b)=>a+b,0);
+  // 쪽수 기준으로 앞에서부터 이어지게 나눈다 (한 사람이 연속된 소절을 맡음)
+  let acc = 0;
+  const who = us.map((u,k)=>{ const mid = acc + pages[k]/2; acc += pages[k]; return Math.min(names.length-1, Math.floor(mid/total*names.length)) });
+  // 사람마다 자기 몫 안에서 쪽수 비례로 마감을 펼친다
+  names.forEach((_,w)=>{
+    const mine = us.map((u,k)=>k).filter(k=>who[k]===w), sum = mine.reduce((a,k)=>a+pages[k],0); let c = 0;
+    mine.forEach(k=>{ c += pages[k]; const d = new Date(d0.getTime() + (d1-d0)*c/sum); us[k].assignee = names[w]; us[k].due = d.toISOString().slice(0,10) });
+  });
+  renderView(true); toast(`${names.length}명에게 ${us.length}개 단위를 나눴습니다. 확인 후 [단위 확정]을 누르세요.`, 6000);
+}
+function addRow(i){
+  const base = DRAFT.units[i] || {pages:[0,0]};
+  DRAFT.units.splice(i+1, 0, {id:"", title:"", part:base.part||"", pages:[base.pages[1]+1, base.pages[1]+1], printed:null, include:true, assignee:"", due:""});
+  renderView(true);
+}
+function delRow(i){ const u = DRAFT.units[i];
+  if(!confirm(`${u.id} ${u.title||"(제목 없음)"} 행을 지울까요? (확정 전까지는 저장되지 않습니다)`)) return;
+  DRAFT.units.splice(i,1); renderView(true) }
+async function confirmUnits(){
+  const inc = DRAFT.units.filter(u=>u.include);
+  const bad = inc.filter(u=>!String(u.id).trim() || !u.title.trim() || !(u.pages[0]>0) || u.pages[1]<u.pages[0]);
+  if(bad.length) return toast(`번호·제목·쪽 범위를 확인하세요: ${bad.map(u=>u.id||"?").join(", ")}`, 6000);
+  const ids = DRAFT.units.map(u=>String(u.id).trim());
+  if(new Set(ids).size !== ids.length) return toast("번호가 겹치는 단위가 있습니다.", 6000);
+  try{ const j = await api("/api/book/units",{method:"POST",body:JSON.stringify({units:DRAFT.units, style:DRAFT.style})});
+    toast(`소절 ${j.made.length}개를 만들었습니다. [전체 판정 → 정오표 한 번에]를 누르세요.`, 6000); DRAFT=null; location.hash="#/all"; await refresh(); renderView(true);
+  }catch(e){ toast("실패: "+e.message, 8000) }
+}
+
+/* ---------- Σ 진행 현황 ---------- */
+let allRendered = null;
+function renderAll(force){
+  const j = APP.job, key = JSON.stringify([APP.units, APP.merged, APP.notes, j.running]);
+  if(!force && allRendered === key){ updateJobBox("alljob"); return }
+  allRendered = key;
+  const us = APP.units, n = s => us.filter(u=>u.status===s).length;
+  const late = u => u.due && u.status!=="검토완료" && u.due < today();
+  const sum = (f) => us.reduce((a,u)=>a+(f(u)||0),0);
+  $("view").innerHTML = `
+  <h1>전체 속독 · 정오표</h1>
+  <div class="sub">${esc(APP.book ? APP.book.file : "")} — ① 한 번 돌리면 ② 책 전체 정오표가 한 파일로 나옵니다. 소절별 검토(왼쪽 목록)는 정독 담당자가 필요할 때만 합니다.</div>
+  <div class="kpis">
+    <div class="kpi"><span class="mute">단위</span><b>${us.length}</b></div>
+    <div class="kpi"><span class="mute">미판정</span><b>${n("미판정")}</b></div>
+    <div class="kpi"><span class="mute">판정완료(검토 전)</span><b>${n("판정완료")}</b></div>
+    <div class="kpi"><span class="mute">검토완료</span><b class="ok">${n("검토완료")}</b></div>
+    <div class="kpi"><span class="mute">정오표 건수</span><b>${sum(u=>u.errata)}</b></div>
+    <div class="kpi"><span class="mute">마감 지남</span><b class="${us.some(late)?"bad":""}">${us.filter(late).length}</b></div>
+  </div>
+  <div class="card">
+    <h2><span class="n">1</span>일괄 실행 <span class="mute" style="font-weight:400">— 끝나면 ②에 책 전체 정오표가 한 번에 나옵니다</span></h2>
+    <div class="row">
+      <button class="primary" onclick="runAll(false)" ${j.running?"disabled":""}>전체 판정 → 정오표 한 번에</button>
+      <button onclick="runAll(true)" ${j.running?"disabled":""}>판정 안 한 단위만</button>
+      <button onclick="act('/api/rules')" ${j.running?"disabled":""}>규칙 검사만 다시</button>
+      <span class="mute">4쪽 구간마다 약 1분 · 이미 판정한 구간은 캐시로 건너뜁니다 · 밤새 돌려 두고 아침에 검토해도 됩니다.</span>
+    </div>
+    <div id="alljob"></div>
+  </div>
+  <div class="card">
+    <h2><span class="n">2</span>책 전체 정오표 <span class="mute" style="font-weight:400">— 한 파일에 모든 단위</span></h2>
+    <div class="row">
+      ${APP.merged ? `<a href="/merged.html" target="_blank"><button class="primary">정오표 전체 보기 (HTML)</button></a>
+        <a href="/merged"><button>⬇ ${esc(APP.merged.name)}</button></a><span class="mute">${esc(APP.merged.time)}</span>` : `<span class="mute">아직 없습니다. ①을 실행하거나 아래 버튼을 누르세요.</span>`}
+      <button onclick="exportAll()">지금 결과로 다시 만들기</button>
+    </div>
+    <div class="mute" style="margin-top:6px">검토를 마친 단위는 검토자가 체크한 항목, 아직 검토 전인 단위는 수정확률 기준(60%, 비문 80%)으로 자동 선정한 항목이 들어갑니다 (상태 열에 '자동 선정(검토 전)'으로 표시).
+      xlsx 시트: 정오표 · 검토 후보(선정 안 된 나머지) · 진행 현황 · 책 전체 메모</div>
+  </div>
+  <div class="card">
+    <h2><span class="n">3</span>단위별 진행</h2>
+    <div class="tbl"><table><thead><tr><th>단위</th><th>제목</th><th>인쇄 쪽</th><th>쪽수</th><th>담당자</th><th>마감</th><th>상태</th><th>후보</th><th>정오표</th><th>반영자</th></tr></thead><tbody>
+    ${us.map(u=>`<tr><td><a href="${ulink(u.id)}">${esc(u.id)}</a></td><td>${esc(u.title)}</td><td class="num">${pp(u.printed)}</td><td class="num">${u.n_pages}</td>
+      <td>${esc(u.assignee||"")}</td><td class="${late(u)?"late":""}">${esc(u.due||"")}</td>
+      <td><span class="tag ${ST[u.status]||"plain"}">${u.status}</span></td><td class="num">${u.status==="미판정"?"":u.candidates}</td>
+      <td class="num">${u.errata ?? ""}</td><td>${esc(u.reviewer||"")}</td></tr>`).join("")}
+    </tbody></table></div>
+  </div>
+  <div class="card">
+    <h2><span class="n">ℹ</span>책 전체 점검 메모 <span class="mute" style="font-weight:400">— 규칙 검사가 책 전체를 보고 남긴 것 (편집 방침으로 한 번에 정할 일)</span></h2>
+    <ul class="notes">${APP.notes.map(x=>`<li>${esc(x)}</li>`).join("") || '<li class="mute">아직 없습니다. 판정을 한 번 돌리면 생깁니다.</li>'}</ul>
+  </div>`;
+  updateJobBox("alljob");
+}
+async function runAll(onlyNew){
+  if(!onlyNew && !confirm("모든 단위를 차례로 판정하고, 끝나면 책 전체 정오표를 한 번에 만듭니다 (이미 판정한 구간은 캐시로 건너뜀). 시작할까요?")) return;
+  try{ await api("/api/run-all",{method:"POST",body:JSON.stringify({only_new:onlyNew})}); toast("전체 판정을 시작했습니다."); refresh() }catch(e){ toast(e.message, 8000) }
+}
+async function exportAll(){ try{ const j = await api("/api/export-all",{method:"POST"}); toast("만들었습니다: "+j.file); allRendered=null; refresh() }catch(e){ toast(e.message, 8000) } }
+
+/* ---------- 알림 · 작업 로그 ---------- */
+let ALERT_OFF = "";
+function jobAlert(j){
+  if(j.running || !j.error) return "";
+  const sig = j.name+"|"+j.ended; if(ALERT_OFF === sig) return "";
+  const auth = j.error_kind === "auth" || /Codex 로그인이 만료/.test(j.error);
+  const raw = j.error.replace(/^.*?\(원문: /, "").replace(/\)$/, "");
+  return `<div class="alert"><button class="x" title="닫기" onclick="closeAlert('${esc(sig)}')">✕</button>
+    ${auth ? `<b>⚠ 이 PC의 Codex 로그인이 만료됐습니다.</b> (${esc(j.name)})
+      <div class="row" style="margin-top:8px"><button class="primary" onclick="codexLogin(true)">Codex 다시 로그인</button>
+        <span>브라우저가 열리면 ChatGPT 계정으로 로그인한 뒤, 같은 버튼을 다시 누르세요. (왼쪽 아래 Codex 메뉴에서도 할 수 있습니다)</span></div>
+      <details><summary>직접 하려면</summary>명령창(cmd)에서 <code>codex logout</code> 다음 <code>codex login</code> — 또는 프로그램 폴더의 <b>codex-다시로그인.bat</b>.
+        <button class="iconbtn" onclick="copyLogin()">명령 복사</button></details>
+      <details><summary>원문 오류 보기</summary>${esc(raw)}</details>`
+    : `<b>⚠ ${esc(j.name)} 작업이 멈췄습니다.</b><div style="margin-top:4px;overflow-wrap:anywhere">${esc(j.error)}</div>`}</div>`;
+}
+function closeAlert(sig){ ALERT_OFF = sig; renderView(true) }
+function updateJobBox(id){
+  const el = $(id), j = APP.job; if(!el) return;
+  const r = route(), mine = id==="chjob" ? j.uid===r.id : (j.uid===null || j.name==="전체 판정");
+  if(!j.name || !mine){ el.innerHTML = ""; return }
+  const sig = j.log.length+"|"+j.running+"|"+ALERT_OFF;
+  if(el.dataset.sig === sig) return; el.dataset.sig = sig;
+  const log = `<pre class="log">${esc(j.log.join("\n")||"시작 중…")}</pre>`;
+  el.innerHTML = jobAlert(j) + (j.running ? `<div class="bar"><i style="width:${progress(j)}%"></i></div>${log}`
+    : `<details style="margin:6px 0"><summary class="mute">${j.error ? "⚠" : "✓"} ${esc(j.name)} ${j.error ? "중단" : "완료"} (${esc(j.ended||"")}) — 로그 보기</summary>${log}</details>`);
+  const lg = el.querySelector(".log"); lg.scrollTop = lg.scrollHeight;
+}
+
+/* ---------- Codex 계정 (좌하단) ---------- */
+let CODEXMENU = false, CODEXSEEN = null;
+function codexFoot(){
+  const c = APP.codex || {};
+  if(c.verified === false && CODEXSEEN !== c.checked_at){ CODEXMENU = true; CODEXSEEN = c.checked_at }
+  const busy = c.checking || c.login_open;
+  const dot = busy ? "⏳" : c.verified ? "🟢" : (c.verified === false || c.logged_in === false) ? "🔴" : "🟡";
+  const head = c.installed === false ? "Codex 없음" : c.logged_in === false ? "Codex 로그인 필요"
+    : c.verified === false ? "Codex 로그인 만료" : c.verified ? "Codex 정상" : "Codex 확인 필요";
+  return `<div class="cxbtn" onclick="CODEXMENU=!CODEXMENU;renderNav()" title="눌러서 로그인 · 로그아웃 · 새로고침"><span>${dot} ${head}</span><span class="cxmail">${esc(c.email||"")}</span><span>${CODEXMENU?"▾":"▸"}</span></div>
+    ${CODEXMENU ? `<div class="cxmenu">
+      <div>${esc(c.message||"")}${c.checked_at ? ` <span style="opacity:.7">· ${esc(c.checked_at)}</span>` : ""}</div>
+      <div class="row" style="gap:4px;margin-top:6px">
+        <button onclick="codexAct('refresh')" ${busy?"disabled":""} title="로그인 상태 + 실제로 한 번 짧게 불러 봅니다 (10~30초)">새로고침</button>
+        <button onclick="codexLogin(true)" ${busy||c.installed===false?"disabled":""}>로그인</button>
+        <button onclick="codexAct('logout')" ${busy||c.installed===false?"disabled":""}>로그아웃</button>
+      </div></div>` : ""}`;
+}
+async function codexAct(what){
+  if(what==="logout" && !confirm("이 PC의 Codex 로그인을 해제할까요? (다시 [로그인]해야 판정을 쓸 수 있습니다)")) return;
+  try{ await api("/api/codex/"+what,{method:"POST"}); toast(what==="refresh" ? "Codex를 실제로 불러 보는 중입니다 (10~30초)" : "로그아웃했습니다."); refresh() }catch(e){ toast(e.message, 8000) }
+}
+async function codexLogin(relogin){
+  try{ await api("/api/codex/login",{method:"POST",body:JSON.stringify({relogin: relogin===true})});
+    CODEXMENU = true; toast("새 창과 브라우저가 열립니다. ChatGPT 계정으로 로그인하세요. 끝나면 자동으로 확인합니다.", 9000); refresh()
+  }catch(e){ toast(e.message, 8000) }
+}
+function copyLogin(){ navigator.clipboard.writeText("codex logout && codex login").then(()=>toast("복사했습니다. 명령창에 붙여 넣으세요.")) }
+
+/* ---------- 책 · 백업 ---------- */
+async function uploadBook(f){
+  if(!f) return; toast(`${f.name} 올리는 중… 소절 단위를 찾습니다 (몇 초)`, 8000);
+  try{ const j = await api("/api/book/upload",{method:"POST",headers:{"X-Filename":encodeURIComponent(f.name)},body:f});
+    DRAFT = null; toast(`단위 ${j.toc.units.length}개를 찾았습니다. 확인 후 확정하세요.`, 6000); location.hash="#/book"; await refresh(); renderView(true);
+  }catch(e){ toast("실패: "+e.message, 8000) }
+}
+async function newBook(){
+  if(APP.book || APP.units.length){
+    if(!confirm("지금 책 작업을 backup 폴더로 옮기고 새 책으로 시작할까요?\n(지우지 않습니다. '이전 책'에서 다시 불러올 수 있습니다)")) return;
+  }
+  try{ const j = await api("/api/new-book",{method:"POST"});
+    DRAFT=null; location.hash="#/book"; await refresh(); renderView(true);
+    toast(j.backup ? `백업: backup/${j.backup} — 새 가제본 PDF를 끌어다 놓으세요` : "새 가제본 PDF를 끌어다 놓으세요", 6000);
+  }catch(e){ toast(e.message) }
+}
+async function restoreBook(name){
+  if(!confirm(`'${name}' 을(를) 불러올까요?\n지금 작업은 먼저 backup 폴더로 옮겨집니다.`)) return;
+  try{ await api("/api/restore",{method:"POST",body:JSON.stringify({name})}); DRAFT=null; await refresh(); renderView(true); toast("불러왔습니다.") }catch(e){ toast(e.message) }
+}
+async function codexToc(){ try{ await api("/api/book/toc-codex",{method:"POST"}); toast("Codex가 단위를 읽는 중입니다 (1~2분)"); refresh() }catch(e){ toast(e.message) } }
+
+/* ---------- 소절 화면 ---------- */
+let unitRendered = null;
+function renderUnit(force){
+  const s = US, u = s.unit, b = s.brief, j = APP.job, sm = s.summary;
+  const key = u.id+"|"+(sm&&sm.updated)+"|"+s.stages.map(x=>x.files.length).join(",")+"|"+b.status;
+  if(!force && unitRendered === key){ updateJobBox("chjob"); $("btnRun") && ($("btnRun").disabled = j.running); return }
+  if(!force && document.activeElement && document.activeElement.closest("#meta")) return;
+  unitRendered = key;
+  const src = s.stages.find(x=>x.stage==="00_원고").files.find(f=>f.name.endsWith(".pdf"));
+  const outFiles = s.stages.find(x=>x.stage==="05_정오표").files.filter(f=>f.name!=="latest.json");
+  $("view").innerHTML = `
+  <div class="row" style="justify-content:space-between">
+    <div><h1>${esc(u.id)} ${esc(u.title.replace(/^\d+\.\d+\s*/,""))}</h1>
+    <div class="sub" style="margin:0">${esc(u.part||"")} · 인쇄 p.${pp(u.printed)} (PDF ${u.pages[0]}–${u.pages[1]}, ${u.n_pages}쪽) · <span class="tag ${ST[b.status]||"plain"}">${b.status}</span></div></div>
+    <div class="row">${src ? `<a href="/files/${encodeURIComponent(u.id)}/${encodeURI(src.path)}" target="_blank"><button title="가제본 정독용으로 이 소절만 잘라 둔 PDF">소절 PDF</button></a>` : ""}<button onclick="openDir('')">폴더 열기</button></div>
+  </div>
+  <div class="stages" style="margin-top:12px">${s.stages.map(x=>`<div class="stage" onclick="openDir('${x.stage}')" title="탐색기로 열기"><b>${esc(x.stage)}</b><span>${x.files.length}개 파일</span></div>`).join("")}</div>
+
+  <div class="card" id="meta">
+    <h2><span class="n">1</span>정독 담당 · 교정 판정 <span class="mute" style="font-weight:400">→ 00_원고 · 02_규칙검사 · 03_판정 (Codex OAuth)</span></h2>
+    <div class="row" style="margin-bottom:10px">
+      <label>담당자 <input type="text" id="assignee" value="${esc(u.assignee||"")}" style="width:110px"></label>
+      <label>마감 <input type="date" id="due" value="${esc(u.due||"")}"></label>
+      <button onclick="saveMeta()">저장</button>
+    </div>
+    <div class="row"><button class="primary" id="btnRun" onclick="act('/api/unit/run')" ${j.running?"disabled":""}>${sm?"다시 판정":"판정 시작"}</button>
+    <span class="mute">4쪽 구간마다 약 1분 · 규칙 검사(책 전체)는 몇 초 · 이미 판정한 구간은 다시 하지 않습니다.</span></div>
+    <div id="chjob"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>검토 <span class="mute" style="font-weight:400">→ 04_검토 — 체크·수정문구 편집 후 [반영 → 정오표]</span></h2>
+    ${sm ? `<div class="kpis">
+        <div class="kpi"><span class="mute">검토 후보</span><b>${sm.rows}</b></div>
+        <div class="kpi"><span class="mute">규칙</span><b>${sm.rule}</b></div>
+        <div class="kpi"><span class="mute">AI</span><b>${sm.codex}</b></div>
+        ${Object.entries(sm.by_type).map(([k,v])=>`<div class="kpi"><span class="mute">${esc(k)}</span><b>${v}</b></div>`).join("")}
+        ${sm.failed?`<div class="kpi"><span class="mute">판정 실패 구간</span><b class="bad">${sm.failed}</b></div>`:""}
+        <div class="kpi"><span class="mute">판정 시각</span><b style="font-size:14px">${esc(sm.updated)}</b></div>
+      </div>
+      <div class="row" style="margin-bottom:8px"><a href="/review/${encodeURIComponent(u.id)}" target="_blank"><button>새 창으로 열기</button></a>
+        ${sm.dropped_wrap?`<span class="mute">줄끝 띄어쓰기 ${sm.dropped_wrap}건은 인쇄본에서 보이지 않아 뺐습니다.</span>`:""}</div>
+      <iframe src="/review/${encodeURIComponent(u.id)}?t=${encodeURIComponent(sm.updated)}" title="검토"></iframe>`
+    : `<div class="empty">아직 판정 결과가 없습니다. [판정 시작]을 누르세요.</div>`}
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>정오표 파일 <span class="mute" style="font-weight:400">→ 05_정오표 — 게시판에는 <b>정오표_게시판_*.html</b>, 엑셀은 <b>정오표_*.xlsx</b></span></h2>
+    ${outFiles.length ? `<table><thead><tr><th>파일</th><th>시각</th><th></th></tr></thead><tbody>${outFiles.map(x=>`<tr>
+        <td>${esc(x.name)} ${x.name.startsWith("정오표_게시판")?'<span class="tag">게시판용</span>':x.name.endsWith(".xlsx")?'<span class="tag">엑셀</span>':""}</td><td class="mute">${x.time}</td>
+        <td style="white-space:nowrap">${x.name.endsWith(".xlsx")?"":`<a href="/files/${encodeURIComponent(u.id)}/${encodeURI(x.path)}" target="_blank">보기</a> · `}<a href="/files/${encodeURIComponent(u.id)}/${encodeURI(x.path)}?dl=1">내려받기</a></td></tr>`).join("")}</tbody></table>`
+      : `<div class="mute">아직 반영한 내역이 없습니다.</div>`}
+  </div>`;
+  updateJobBox("chjob");
+}
+const uid = () => route().id;
+async function saveMeta(){
+  try{ await api(`/api/unit/meta?id=${encodeURIComponent(uid())}`,{method:"POST",body:JSON.stringify({assignee:$("assignee").value, due:$("due").value})});
+    toast("저장했습니다."); unitRendered=null; refresh() }catch(e){ toast(e.message) }
+}
+async function act(url){ try{ await api(`${url}${url.includes("/unit/")?"?id="+encodeURIComponent(uid()):""}`,{method:"POST"}); refresh() }catch(e){ toast(e.message) } }
+async function openDir(stage){ try{ await api(`/api/unit/open?id=${encodeURIComponent(uid())}&stage=${encodeURIComponent(stage)}`,{method:"POST"}) }catch(e){ toast(e.message) } }
+
+window.addEventListener("dragover", e=>e.preventDefault());
+window.addEventListener("drop", e=>{ e.preventDefault();
+  const f = e.dataTransfer && e.dataTransfer.files[0];
+  if(f && route().view==="book" && /\.pdf$/i.test(f.name)) uploadBook(f);
+  else if(f) toast("가제본 PDF는 '책 넣기 · 단위' 화면에 놓아 주세요.");
+});
+window.addEventListener("message", e=>{ if(e.data && e.data.tse==="applied"){ toast(`정오표 작성 — 체크한 ${e.data.checked ?? ""}건. 아래 '③ 정오표 파일'과 전체 합본 xlsx를 확인하세요.`, 6000); unitRendered=null; refresh() } });
+window.addEventListener("hashchange", ()=>{ unitRendered=null; allRendered=null; US=null; refresh().then(()=>renderView(true)) });
+refresh().then(()=>renderView(true));
+</script></body></html>
